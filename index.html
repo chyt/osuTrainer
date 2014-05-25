@@ -1,0 +1,364 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<title>osu! Trainer</title>
+<!--Credits to http://www.newgrounds.com/audio/listen/415384-->
+<audio id="player" src="metronome.mp3" preload="auto"></audio>
+<style type="text/css">
+body {
+	font-family:sans-serif;
+	font-size:18px;
+	background-color:#F0ECFA;
+	overflow:hidden;
+}
+td {
+	
+}
+.tdleft {
+	text-align:right;
+	width:50%;
+}
+.tdright {
+	text-align:left;
+	width:50%;
+}
+.td2 {
+	text-align:center;
+	width:100%;
+}
+h1 {
+	margin-top:80px;
+	text-align:center;
+}
+table.content {
+	table-layout:fixed;
+	margin:0 auto;
+	padding:15px;
+	width:350px;
+	border:1px solid #8C8CD4;
+	background-color:#A9A9FF;
+}
+.countdown {
+	width:800px;
+	margin:0 auto;
+	padding-top:20px;
+	text-align:center;
+	font-size:36px;
+}
+</style>
+<script type="text/javascript">
+var circlesClicked = 0;
+var totalCircles = 0;
+var bpm = 100;
+var playback_rate = 1;
+var milliseconds_per_beat = 0;
+var countdownCount = 3;
+var countdownTimer;
+var pinkX = 0;
+var pinkY = 0;
+var purpleX = 0;
+var purpleY = 0;
+var pinkTimer;
+var purpleTimer;
+var averageAccuracy = 0;
+var loopTimer;
+var trainingEnded = 0;
+
+function disableSelection(target) {
+    if (typeof target.onselectstart!="undefined") // if IE
+        target.onselectstart=function(){return false}
+    else if (typeof target.style.MozUserSelect!="undefined") // if Firefox
+        target.style.MozUserSelect="none";
+    else // others
+        target.onmousedown=function(){return false;}
+}
+
+function calculate() {
+	var d = document.getElementById("playback");
+	var playbackRate = d.options[d.selectedIndex].value;
+	var bpm_new = 100*playbackRate;
+	var beats_per_second = bpm_new/60;
+	milliseconds_per_beat = 1000/beats_per_second;
+	document.getElementById("bpm").value = Math.ceil(bpm_new*100)/100;;
+}
+
+function resetTable() {
+	document.getElementById("bpm").value = 100;
+	document.getElementById("playback").value = 1.0;
+	document.getElementById("size").value = 1.0;
+	document.getElementById("duration").value = "60";
+}
+
+function startCountdown() {
+	calculate();
+	disableSelection(document.getElementById("pink"));
+	disableSelection(document.getElementById("purple"));
+	disableSelection(document.getElementById("timer"));
+	disableSelection(document.getElementById("circlestats"));
+	document.getElementById("tableContent").style.visibility = "hidden";
+	document.getElementById("countdown").innerHTML = "Ready?";
+	countdownTimer = setInterval(function() { handleTimer(countdownCount); }, 700);
+}
+
+function handleTimer() {
+	if(countdownCount === 0) {
+		clearInterval(countdownTimer);
+		endCountdown();
+	} else {
+		document.getElementById("countdown").innerHTML = countdownCount;
+		countdownCount--;
+	}
+}
+
+function endCountdown() {
+	document.getElementById("content").style.visibility = "hidden";
+	//var d = document.getElementById("playback");
+	//document.getElementById("player").playbackRate = d.options[d.selectedIndex].value;
+	var e = document.getElementById("duration");
+	var f = document.getElementById("size");
+	startLoop(f.options[f.selectedIndex].value,e.options[e.selectedIndex].value);
+}
+
+function startLoop(size,duration) {
+	document.getElementById("timer").style.visibility = "visible";
+	document.getElementById("circlestats").style.visibility = "visible";
+	document.getElementById("accuracy").style.visibility = "visible";
+	document.getElementById("averageAccuracy").style.visibility = "visible";
+	document.getElementById("pink").style.visibility = "visible";
+	document.getElementById("purple").style.visibility = "visible";
+	document.getElementById("pink").style.height = 100*size+"px";
+	document.getElementById("purple").style.height = 100*size+"px";
+	document.getElementById("pink").style.width = 100*size+"px";
+	document.getElementById("purple").style.width = 100*size+"px";
+	trainingTimer(duration,0);
+	circleTimer(size,0);
+}
+
+function trainingTimer(duration,c) {
+	document.getElementById("timer").innerHTML = "Time left: "+(duration-c);
+	if(duration==c) {
+		endTraining();
+	}
+	else {
+		window.setTimeout(function() {trainingTimer(duration,c+1)},1000);
+	}
+}
+
+function endTraining() {
+	trainingEnded = 1;
+	document.getElementById("timer").style.visibility = "hidden";
+	document.getElementById("circlestats").style.visibility = "hidden";
+	document.getElementById("accuracy").style.visibility = "hidden";
+	document.getElementById("averageAccuracy").style.visibility = "hidden";
+	document.getElementById("content").style.visibility = "visible";
+	document.getElementById("headertext").innerHTML = "TIME IS UP!";
+	document.getElementById("countdown").innerHTML = "Results:<br/><br/>"+document.getElementById("circlestats").innerHTML+"<br/>"+document.getElementById("averageAccuracy").innerHTML+"<br/><br/><span onclick='location.reload()' style='cursor:pointer'>Play Again</span>";
+}
+
+function randomInt(min,max) {
+    return Math.floor(Math.random()*(max-min+1)+min);
+}
+
+function isOdd(num) { 
+	return num % 2;
+}
+
+function distance() {
+    return Math.sqrt((pinkX - purpleX)*(pinkX - purpleX) + (pinkY - purpleY)*(pinkY - purpleY));
+}
+
+function circleTimer(size,c) {
+	totalCircles++;
+	var totalCirclesDisplay;
+	if(totalCircles>1) {
+		totalCirclesDisplay = totalCircles-1;
+	}
+	else {
+		totalCirclesDisplay = totalCircles;
+	}
+	document.getElementById("circlestats").innerHTML = "Circles clicked: "+circlesClicked+"/"+totalCirclesDisplay+" ("+Math.round((circlesClicked/totalCirclesDisplay*100))+"%)";
+	document.getElementById('player').play();
+	var bound = 100*size;
+	var viewportwidth;
+	var viewportheight;
+    if (typeof window.innerWidth != 'undefined') {
+        viewportwidth = window.innerWidth,
+        viewportheight = window.innerHeight
+    }
+    else if (typeof document.documentElement != 'undefined' && typeof document.documentElement.clientWidth != 'undefined' && document.documentElement.clientWidth != 0) {
+        viewportwidth = document.documentElement.clientWidth,
+        viewportheight = document.documentElement.clientHeight
+    }
+    else {
+        viewportwidth = document.getElementsByTagName('body')[0].clientWidth,
+        viewportheight = document.getElementsByTagName('body')[0].clientHeight
+    }
+	var rightBound = viewportwidth-bound;
+	var bottomBound = viewportheight-bound;
+	if(isOdd(c)) {
+		document.getElementById("pink").style.visibility = "visible";
+		pinkX = randomInt(bound,rightBound);
+		pinkY = randomInt(bound,bottomBound);
+		while(distance() < size*120) {    
+			pinkX = randomInt(bound,rightBound);
+			pinkY = randomInt(bound,bottomBound);
+		}
+		document.getElementById("pink").style.left = pinkX+"px";
+		document.getElementById("pink").style.top = pinkY+"px";
+		pinkTimer = new Date().getTime();
+	}
+	else {
+		document.getElementById("purple").style.visibility = "visible";
+		purpleX = randomInt(bound,rightBound);
+		purpleY = randomInt(bound,bottomBound);
+		while(distance() < size*120) {    
+			purpleX = randomInt(bound,rightBound);
+			purpleY = randomInt(bound,bottomBound);
+		}
+		document.getElementById("purple").style.left = purpleX+"px";
+		document.getElementById("purple").style.top = purpleY+"px";
+		purpleTimer = new Date().getTime();
+	}
+	if(trainingEnded==1) {
+		clearInterval(loopTimer);
+		document.getElementById("pink").style.visibility = "hidden";
+		document.getElementById("purple").style.visibility = "hidden";
+	}
+	else {
+		loopTimer = setTimeout(function() {circleTimer(size,c+1)},(milliseconds_per_beat));
+	}
+}
+
+function clickedCircle(type) {
+	//0 is pink, 1 is purple
+	circlesClicked++;
+	document.getElementById("circlestats").innerHTML = "Circles clicked: "+circlesClicked+"/"+totalCircles+" ("+Math.round((circlesClicked/totalCircles*100))+"%)";
+	var accuracy;
+	var averageTiming;
+	var timing;
+	var currentTime = new Date().getTime();
+	if(type==0) {
+		accuracy = milliseconds_per_beat - (currentTime - pinkTimer);
+		document.getElementById("pink").style.visibility = "hidden";
+	}
+	else {
+		accuracy = milliseconds_per_beat - (currentTime - purpleTimer);
+		document.getElementById("purple").style.visibility = "hidden";
+	}
+	if(accuracy>0) {
+		timing = "early";
+	}
+	else {
+		timing = "late";
+	}
+	document.getElementById("accuracy").innerHTML = "Accuracy: "+Math.abs(accuracy)+" ms "+timing;
+	averageAccuracy = averageAccuracy + accuracy;
+	if(averageAccuracy>0) {
+		averageTiming = "early";
+	}
+	else {
+		averageTiming = "late";
+	}
+	var averageDisplay = averageAccuracy/circlesClicked;
+	document.getElementById("averageAccuracy").innerHTML = "Average Accuracy: "+Math.round(Math.abs(averageDisplay))+" ms "+averageTiming;
+}
+
+</script>
+</head>
+<body>
+<img onclick="clickedCircle(0)" id="pink" style="cursor:pointer;visibility:hidden;left:-200px;top:-200px;position:fixed;z-index:10;" src="pink.png" />
+<img onclick="clickedCircle(1)" id="purple" style="cursor:pointer;visibility:hidden;left:-200px;top:-200px;position:fixed;z-index:10" src="purple.png" />
+<div id="timer" style="position:fixed;left:10px;top:10px;visibility:hidden;font-size:24px;"></div>
+<div id="circlestats" style="position:fixed;left:10px;top:50px;visibility:hidden;font-size:24px;"></div>
+<div id="accuracy" style="position:fixed;left:10px;top:90px;visibility:hidden;font-size:24px;">Accuracy:</div>
+<div id="averageAccuracy" style="position:fixed;left:10px;top:130px;visibility:hidden;font-size:24px;">Average Accuracy:</div>
+<div id="content">
+<h1 id="headertext" style="text-align:center;">osu! Trainer</h1>
+<div id="countdown" class="countdown"></div>
+<table cellpadding="5" cellspacing="5" class="content" id="tableContent">
+<tr>
+<td class="tdleft">Training Speed:</td>
+<td class="tdright">
+<select onchange="calculate()" id="playback">
+	<option value="0.5">0.5x</option>
+	<option value="0.6">0.6x</option>
+	<option value="0.7">0.7x</option>
+    <option value="0.8">0.8x</option>
+    <option value="0.9">0.9x</option>
+    <option value="1" selected="selected">1.0x</option>
+    <option value="1.1">1.1x</option>
+    <option value="1.2">1.2x</option>
+    <option value="1.3">1.3x</option>
+    <option value="1.4">1.4x</option>
+    <option value="1.5">1.5x</option>
+    <option value="1.6">1.6x</option>
+    <option value="1.7">1.7x</option>
+    <option value="1.8">1.8x</option>
+    <option value="1.9">1.9x</option>
+    <option value="2.0">2.0x</option>
+    <option value="2.1">2.1x</option>
+    <option value="2.2">2.2x</option>
+    <option value="2.3">2.3x</option>
+    <option value="2.4">2.4x</option>
+    <option value="2.5">2.5x</option>
+    <option value="2.6">2.6x</option>
+    <option value="2.7">2.7x</option>
+    <option value="2.8">2.8x</option>
+    <option value="2.9">2.9x</option>
+    <option value="3.0">3.0x</option>
+</select>
+</td>
+</tr>
+<tr>
+<td class="tdleft">BPM:</td>
+<td class="tdright"><input readonly="readonly" id="bpm" type="text" size="1 0" value="100" /></td>
+</tr>
+<tr>
+<td class="tdleft">Circle Size:</td>
+<td class="tdright">
+<select id="size">
+	<option value="0.5">0.5x</option>
+	<option value="0.6">0.6x</option>
+	<option value="0.7">0.7x</option>
+    <option value="0.8">0.8x</option>
+    <option value="0.9">0.9x</option>
+    <option value="1" selected="selected">1.0x</option>
+    <option value="1.1">1.1x</option>
+    <option value="1.2">1.2x</option>
+    <option value="1.3">1.3x</option>
+    <option value="1.4">1.4x</option>
+    <option value="1.5">1.5x</option>
+    <option value="1.6">1.6x</option>
+    <option value="1.7">1.7x</option>
+    <option value="1.8">1.8x</option>
+    <option value="1.9">1.9x</option>
+    <option value="2.0">2.0x</option>
+</select>
+</td>
+</tr>
+<tr>
+<td class="tdleft">Duration:</td>
+<td class="tdright">
+<select id="duration">
+	<option value="30">30 seconds</option>
+	<option value="60" selected="selected">1 minute</option>
+	<option value="120">2 minutes</option>
+	<option value="180">3 minutes</option>
+    <option value="240">4 minutes</option>
+    <option value="300">5 minutes</option>
+    <option value="360">6 minutes</option>
+    <option value="420">7 minutes</option>
+    <option value="480">8 minutes</option>
+    <option value="540">9 minutes</option>
+    <option value="600">10 minutes</option>
+</select>
+</td>
+</tr>
+<tr>
+<td colspan="2" class="td2"><button onclick="startCountdown()">Start</button> <button onclick="resetTable()">Reset</button></td>
+</tr>
+</table>
+</div>
+</body>
+</html>
